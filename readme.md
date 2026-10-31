@@ -11,6 +11,20 @@ configuration for 2.x.
 
 ## Connection
 
+CacheBox regions can optionally configure `operationGuard` as a synchronous
+callback returning `{ key, token, milliseconds }` for a Redis lease owned by the
+current operation. Data reads, replacement and deletion atomically check the
+lease token and renew its expiry in the same Lua command as the data operation.
+A missing/invalid guard or lost ownership fails closed; stale owners cannot
+overwrite or delete newer data after their lease expires.
+
+This hook does not acquire/release locks, sign cookies, or provide cross-system
+transactions. The caller must acquire the shared lease before invoking storage
+and release it with an owner-token check in `finally`. `milliseconds` is an
+integer from 1 through 3,600,000. The callback must return the request's actual
+lease; it must not silently acquire a replacement lease for a stale operation.
+Raw `getRedisClient()` access bypasses this guard. Redis Cluster remains unsupported.
+
 Configure `moduleSettings.cbRedis.connection` in ColdBox (or return the same
 structure from `config/modules/cbRedis.cfc`):
 
